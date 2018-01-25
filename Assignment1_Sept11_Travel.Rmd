@@ -1,0 +1,396 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+Sept11_Travel<-read.csv("C:/Users/shiva/Documents/Time Series/Sept11Travel.csv")
+View(Sept11_Travel)
+```
+
+```{r}
+# Air Travel
+travelAir.ts <- ts(Sept11_Travel$Air.RPM..000s., 
+    start = c(1990, 1), end = c(2004, 4), freq = 12)
+plot(travelAir.ts, xlab = "Time", ylab = "TravelAir (in 000s)", ylim = c(29672427
+, 69003617))
+
+# Rail Travel
+travelRail.ts<- ts(Sept11_Travel$Rail.PM,start = c(1990,1), end = c(2004,4),frequency = 12)
+plot(travelRail.ts , xlab = "Time", ylab = "TraveRail", ylim = c(326874247,664013874))
+
+# Car Travel
+
+travelCar.ts<- ts(Sept11_Travel$VMT..billions.,start = c(1990,1), end = c(2004,4),frequency = 12)
+plot(travelCar.ts , xlab = "Time", ylab = "TravelCar(in billions)", ylim = c(153.2,261.3))
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+```{r}
+#splitting air travel data to training and test
+nValid1 <- 32
+nTrain1 <- length(travelAir.ts) - nValid1
+# partition the data 
+trainAir.ts <- window(travelAir.ts, start = c(1990, 1), end = c(1990, nTrain))
+validAir.ts <- window(travelAir.ts, start = c(1990, nTrain + 1),
+                   end = c(1990, nTrain1 + nValid1))
+
+#splitting rail travel data to training and test
+nValid2 <- 32
+nTrain2 <- length(travelRail.ts) - nValid2
+# partition the data 
+trainRail.ts <- window(travelRail.ts, start = c(1990, 1), end = c(1990, nTrain2))
+validRail.ts <- window(travelRail.ts, start = c(1990, nTrain2 + 1),
+                   end = c(1990, nTrain2 + nValid2))
+
+#splitting car travel data to training and test
+nValid3 <- 32
+nTrain3 <- length(travelCar.ts) - nValid3
+# partition the data 
+trainCar.ts <- window(travelCar.ts, start = c(1990, 1), end = c(1990, nTrain3)) 
+validCar.ts <- window(travelCar.ts, start = c(1990, nTrain3 + 1),
+                   end = c(1990, nTrain3 + nValid3))
+```
+
+
+
+
+```{r}
+#  generate the naive and seasonal naive forecasts for air travel
+Airnaive.pred <- forecast::naive(trainAir.ts, h = nValid1)
+Airsnaive.pred <- forecast::snaive(trainAir.ts, h = nValid1)
+#  generate the naive and seasonal naive forecasts for Rail travel
+Railnaive.pred <- forecast::naive(trainRail.ts, h = nValid2)
+Railsnaive.pred <- forecast::snaive(trainRail.ts, h = nValid2)
+#  generate the naive and seasonal naive forecasts for Car travel
+Carnaive.pred <- forecast::naive(trainCar.ts, h = nValid3)
+Carsnaive.pred <- forecast::snaive(trainCar.ts, h = nValid3)
+
+```
+```{r}
+# plot forecasts and actuals in the training and validation sets
+# Air Travel
+plot(trainAir.ts,  ylab = "Air Travel", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "")
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Airnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Airsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(validAir.ts, col = "grey20", lty = 3)
+lines(c(2000.25, 2000.25), c(0, 700999930))
+lines(c(2003, 2003), c(0, 700999930))
+text(1994.25, 59103630, "Training")
+text(2001, 59999990, "Validation")
+text(2004.90, 59103630, "Future")
+arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 30)
+# Rail Travel
+plot(trainRail.ts,  ylab = "Rail Travel", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "")
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Railnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Railsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(validRail.ts, col = "grey20", lty = 3)
+lines(c(2004.70 - 3, 2004.70 - 3), c(0, 804013874))
+lines(c(2004.25, 2004.25), c(0, 804013874))
+text(1996, 664013874, "Training")
+text(2002.75, 664013874, "Validation")
+text(2004.90, 664013874, "Future")
+# car Travel
+ plot(trainCar.ts,  ylab = "Car Travel", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "")
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Carnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Carsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(validCar.ts, col = "grey20", lty = 3)
+lines(c(2004.70 - 3, 2004.70 - 3), c(0, 350))
+lines(c(2004.25, 2004.25), c(0, 270))
+text(1994.25, 240, "Training")
+text(2002.75, 255, "Validation")
+text(2004.90, 240, "Future")
+arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 30)
+
+ 
+```
+
+```{r}
+#plot for pre-event air travel
+plot(trainAir.ts, xlab = "Time", ylab = "TravelAir (in 000s)", ylim = c(29672427
+, 69003617))
+#shorter time series
+AirTravel.3yrs <- window(trainAir.ts, start = c(1990, 1), end = c(1992, 12))
+# fit a linear regression model to the time series
+AirTravel.lm <- forecast::tslm(trainAir.ts ~ trend + I(trend^2))
+#Plot the series
+par(mfrow = c(2, 1))
+plot(AirTravel.3yrs, xlab = "Time", ylab = "Air Travel (in 000s)", 
+                        ylim = c(29672427, 69003617))
+plot(travelAir.ts, xlab = "Time", ylab = "Air Travel (in 000s)", ylim = c(29672427
+, 69003617))
+# overlay the fitted values of the linear model
+lines(AirTravel.lm$fitted, lwd = 1)
+#---------------------------------------------------------------
+
+#plot for pre event rail travel
+plot(trainRail.ts , xlab = "Time", ylab = "TraveRail", ylim = c(326874247,664013874))
+#shorter time series
+RailTravel.3yrs <- window(trainRail.ts, start = c(1990, 1), end = c(1992, 12))
+# fit a linear regression model to the time series
+RailTravel.lm <- forecast::tslm(trainRail.ts ~ trend + I(trend^2))
+#Plot the series
+par(mfrow = c(2, 1))
+plot(RailTravel.3yrs, xlab = "Time", ylab = "Rail Travel", 
+                        ylim = c(326874247,664013874))
+plot(travelRail.ts, xlab = "Time", ylab = "Rail Travel", ylim = c(326874247,664013874))
+# overlay the fitted values of the linear model
+lines(RailTravel.lm$fitted, lwd = 1)
+#------------------------------------------------------------------
+#plot for pre event car travel
+plot(trainCar.ts , xlab = "Time", ylab = "TravelCar(in billions)", ylim = c(153.2,261.3))
+#shorter time series
+CarTravel.3yrs <- window(trainCar.ts, start = c(1990, 1), end = c(1992, 12))
+# fit a linear regression model to the time series
+CarTravel.lm <- forecast::tslm(trainCar.ts ~ trend + I(trend^2))
+#Plot the series
+par(mfrow = c(2, 1))
+plot(CarTravel.3yrs, xlab = "Time", ylab = "Car Travel", 
+                        ylim = c(153.2,261.3))
+plot(trainCar.ts, xlab = "Time", ylab = "Car Travel", ylim = c(153.2,261.3))
+# overlay the fitted values of the linear model
+lines(CarTravel.lm$fitted, lwd = 1)
+```
+
+
+```{r}
+#fitting linear trend in Air Travel
+
+# produce linear trend model
+library(forecast)
+AirTravel.lm <- tslm(trainAir.ts ~ trend)
+
+# plot the series
+plot(trainAir.ts, xlab = "Time", ylab = "Air Travel", ylim = c(29672427
+, 69003617),
+     bty = "l")
+lines(AirTravel.lm$fitted, lwd = 2)
+
+#fitting linear trend in Rail Travel
+
+# produce linear trend model
+library(forecast)
+RailTravel.lm <- tslm(trainRail.ts ~ trend)
+
+# plot the series
+plot(trainRail.ts, xlab = "Time", ylab = "Rail Travel", ylim = c(326874247,664013874),
+     bty = "l")
+lines(RailTravel.lm$fitted, lwd = 2)
+
+#fitting linear trend in Car Travel
+
+# produce linear trend model
+library(forecast)
+carTravel.lm <- tslm(trainCar.ts ~ trend)
+
+# plot the series
+plot(trainCar.ts, xlab = "Time", ylab = "Car Travel", ylim = c(153.2,261.3),
+     bty = "l")
+lines(carTravel.lm$fitted, lwd = 2)
+
+```
+```{r}
+#fitting exponential trend in air travel
+AirTravel.lm.expo.trend <- tslm(trainAir.ts ~ trend, lambda = 0)
+AirTravel.lm.expo.trend.pred <- forecast(AirTravel.lm.expo.trend, h = nValid1, level = 0)
+# fit linear trend using tslm() with argument lambda = 1 (no transform of y)
+AirTravel.lm.linear.trend <- tslm(trainAir.ts ~ trend, lambda = 1)
+AirTravel.lm.linear.trend.pred <- forecast(AirTravel.lm.linear.trend, h = nValid1, level = 0)
+
+plot(AirTravel.lm.expo.trend.pred, ylim = c(29672427
+, 69003617),  ylab = "AirTravel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(AirTravel.lm.expo.trend.pred$fitted, lwd = 2, col = "blue")  # Added in 6-5
+lines(AirTravel.lm.linear.trend.pred$fitted, lwd = 2, col = "black", lty = 3)
+lines(AirTravel.lm.linear.trend.pred$mean, lwd = 2, col = "black", lty = 3)
+lines(valid.ts)
+
+#fitting exponential trend in Rail Travel
+RailTravel.lm.expo.trend <- tslm(trainRail.ts ~ trend, lambda = 0)
+RailTravel.lm.expo.trend.pred <- forecast(RailTravel.lm.expo.trend, h = nValid2, level = 0)
+# fit linear trend using tslm() with argument lambda = 1 (no transform of y)
+RailTravel.lm.linear.trend <- tslm(trainRail.ts ~ trend, lambda = 1)
+RailTravel.lm.linear.trend.pred <- forecast(RailTravel.lm.linear.trend, h = nValid2, level = 0)
+
+plot(RailTravel.lm.linear.trend.pred, ylim = c(326874247,664013874),  ylab = "AirTravel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(RailTravel.lm.expo.trend.pred$fitted, lwd = 2, col = "blue")  # Added in 6-5
+lines(RailTravel.lm.expo.trend.pred$fitted, lwd = 2, col = "black", lty = 3)
+lines(RailTravel.lm.expo.trend.pred$mean, lwd = 2, col = "black", lty = 3)
+lines(valid.ts)
+
+#fitting exponential trend in car travel
+RailTravel.lm.expo.trend <- tslm(trainRail.ts ~ trend, lambda = 0)
+RailTravel.lm.expo.trend.pred <- forecast(RailTravel.lm.expo.trend, h = nValid2, level = 0)
+# fit linear trend using tslm() with argument lambda = 1 (no transform of y)
+RailTravel.lm.linear.trend <- tslm(trainRail.ts ~ trend, lambda = 1)
+RailTravel.lm.linear.trend.pred <- forecast(RailTravel.lm.linear.trend, h = nValid2, level = 0)
+
+plot(RailTravel.lm.linear.trend.pred, ylim = c(326874247,664013874),  ylab = "AirTravel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(RailTravel.lm.expo.trend.pred$fitted, lwd = 2, col = "blue")  # Added in 6-5
+lines(RailTravel.lm.expo.trend.pred$fitted, lwd = 2, col = "black", lty = 3)
+lines(RailTravel.lm.expo.trend.pred$mean, lwd = 2, col = "black", lty = 3)
+lines(valid.ts)
+
+
+```
+```{r}
+#fit quadratic trend in air travel
+train.lm.poly.trend <- tslm(trainAir.ts ~ trend + I(trend^2))
+summary(train.lm.poly.trend)
+train.lm.poly.trend.pred <- forecast(train.lm.poly.trend, h = nValid1, level = 0)
+
+par(mfrow = c(2,1))
+plot(train.lm.poly.trend.pred, ylim = c(29672427
+, 69003617),  ylab = "Air Travel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1))) 
+lines(train.lm.poly.trend$fitted, lwd = 2)
+lines(valid.ts)
+
+plot(train.lm.poly.trend$residuals,  ylab = "Forecast Errors", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1991,2002.25), main = "")
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(valid.ts - train.lm.poly.trend.pred$mean, lwd = 1)
+
+
+#fit quadratic trend in rail travel.
+train.lm.poly.trend <- tslm(trainRail.ts ~ trend + I(trend^2))
+summary(train.lm.poly.trend)
+train.lm.poly.trend.pred <- forecast(train.lm.poly.trend, h = nValid2, level = 0)
+
+par(mfrow = c(2,1))
+plot(train.lm.poly.trend.pred, ylim = c(326874247,664013874),  ylab = "RAIL travel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1))) 
+lines(train.lm.poly.trend$fitted, lwd = 2)
+lines(valid.ts)
+
+plot(train.lm.poly.trend$residuals,  ylab = "Forecast Errors", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "")
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(valid.ts - train.lm.poly.trend.pred$mean, lwd = 1)
+
+#fit quadratic trend in car travel.
+CarTravel.lm.poly.trend <- tslm(trainCar.ts ~ trend + I(trend^2))
+summary(CarTravel.lm.poly.trend)
+CarTravel.lm.poly.trend.pred <- forecast(CarTravel.lm.poly.trend, h = nValid3, level = 0)
+
+par(mfrow = c(2,1))
+plot(CarTravel.lm.poly.trend.pred, ylim = c(153.2,261.3),  ylab = "Car travel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1))) 
+lines(CarTravel.lm.poly.trend$fitted, lwd = 2)
+lines(valid.ts)
+
+plot(CarTravel.lm.poly.trend$residuals,  ylab = "Forecast Errors", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "")
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+```
+
+```{r}
+#including seasonality in Air Travel
+AirTravel.lm.season <- tslm(trainAir.ts ~ season)
+summary(AirTravel.lm.season)
+```
+```{r}
+# Adding season to air travel 
+AirTravel.lm.trend.season <- tslm(trainAir.ts ~ trend + I(trend^2) + season)
+summary(AirTravel.lm.trend.season)
+AirTravel.lm.trend.season.pred <- forecast(AirTravel.lm.trend.season, h = nValid1, level = 0)
+
+par(mfrow = c(2,1))
+plot(AirTravel.lm.trend.season.pred, ylim = c(29672427
+, 69003617),  ylab = "Air Travel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "", flty = 2)
+axis(1, at = seq(1990, 1995, 1), labels = format(seq(1990, 1995, 1))) 
+lines(AirTravel.lm.trend.season$fitted, lwd = 2)
+lines(valid.ts)
+
+plot(AirTravel.lm.trend.season$residuals,  ylab = "Forecast Errors", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "")
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(valid.ts - AirTravel.lm.trend.season.pred$mean, lwd = 1)
+```
+```{r}
+# Adding season for rail Travel
+RailTravel.lm.trend.season <- tslm(trainRail.ts ~ trend + I(trend^2) + season)
+summary(RailTravel.lm.trend.season)
+RailTravel.lm.trend.season.pred <- forecast(RailTravel.lm.trend.season, h = nValid2, level = 0)
+
+par(mfrow = c(2,1))
+plot(RailTravel.lm.trend.season.pred, ylim = c(326874247,664013874),ylab = "Rail Travel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1))) 
+lines(RailTravel.lm.trend.season$fitted, lwd = 2)
+lines(valid.ts)
+
+plot(RailTravel.lm.trend.season$residuals,  ylab = "Forecast Errors", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "")
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(valid.ts - RailTravel.lm.trend.season.pred$mean, lwd = 1)
+```
+```{r}
+# Adding season for car Travel
+CarTravel.lm.trend.season <- tslm(trainCar.ts ~ trend + I(trend^2) + season)
+summary(CarTravel.lm.trend.season)
+CarTravel.lm.trend.season.pred <- forecast(CarTravel.lm.trend.season, h = nValid3, level = 0)
+
+par(mfrow = c(2,1))
+plot(CarTravel.lm.trend.season.pred, ylim = c(153.2,261.3),ylab = "Car Travel", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990,2002, 1))) 
+lines(CarTravel.lm.trend.season$fitted, lwd = 2)
+lines(valid.ts)
+
+plot(CarTravel.lm.trend.season$residuals,  ylab = "Forecast Errors", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2002.25), main = "")
+axis(1, at = seq(1990, 2002, 1), labels = format(seq(1990, 2002, 1)))
+lines(valid.ts - CarTravel.lm.trend.season.pred$mean, lwd = 1)
+```
+```{r}
+#Supress seasonality for air Travel
+# using decompose function
+require(graphics)
+AirTravel.ts <- ts(Sept11_Travel$Air.RPM..000s.,start = c(1990,1),end = c(1994,10),frequency = 4)
+decompose_air <- decompose(AirTravel.ts,"additive")
+plot(as.ts(decompose_air$seasonal))
+plot(as.ts(decompose_air$trend))
+plot(as.ts(decompose_air$random))
+```
+```{r}
+#Supress seasonality for Rail Travel
+# using decompose function
+require(graphics)
+RailTravel.ts <- ts(Sept11_Travel$Rail.PM,start = c(1990,1),end = c(1994,10),frequency = 4)
+decompose_rail <- decompose(RailTravel.ts,"additive")
+plot(as.ts(decompose_rail$seasonal))
+plot(as.ts(decompose_rail$trend))
+plot(as.ts(decompose_rail$random))
+```
+```{r}
+#Supress seasonality for Car Travel
+# using decompose function
+require(graphics)
+CarTravel.ts <- ts(Sept11_Travel$VMT..billions.,start = c(1990,1),end = c(1994,10),frequency = 4)
+decompose_car <- decompose(CarTravel.ts,"additive")
+plot(as.ts(decompose_car$seasonal))
+plot(as.ts(decompose_car$trend))
+plot(as.ts(decompose_car$random))
+```
+
