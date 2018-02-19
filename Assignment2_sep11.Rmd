@@ -1,0 +1,142 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+#Read the Sept 11 File
+Sept11_Travel<-read.csv("C:/Users/shiva/Documents/Spring Sem/Time Series/Sept11Travel.csv")
+```
+
+```{r}
+#Read the Sept 11 data
+Sept11_Travel<-read.csv("C:/Users/shiva/Documents/Spring Sem/Time Series/Sept11Travel.csv")
+# Pre Event Air Travel
+# Air Travel
+travelAir.ts <- ts(Sept11_Travel$Air.RPM..000s., 
+    start = c(1990, 1), end = c(2001, 8), freq = 12)
+plot(travelAir.ts, xlab = "Time", ylab = "TravelAir (in 000s)", ylim = c(29672427, 69003617))
+# Rail Travel
+travelRail.ts<- ts(Sept11_Travel$Rail.PM,start = c(1990,1), end = c(2001,8),frequency = 12)
+plot(travelRail.ts , xlab = "Time", ylab = "TraveRail", ylim = c(326874247,664013874))
+
+# Car Travel
+
+travelCar.ts<- ts(Sept11_Travel$VMT..billions.,start = c(1990,1), end = c(2001,8),frequency = 12)
+plot(travelCar.ts , xlab = "Time", ylab = "TravelCar(in billions)", ylim = c(153.2,261.3))
+# Using  Decompose function to suppress Seasonality for Air data
+#require(graphics)
+require(xts)
+library(scales)
+Decompose_AirMultiplicative.ts=decompose(travelAir.ts,"multiplicative")
+#With Adjusted seasonality
+Adjusted_Air_multiplicative.ts <- travelAir.ts-Decompose_AirMultiplicative.ts$seasonal  
+plot(Adjusted_Air_multiplicative.ts/1000000) 
+# Using  Decompose function to suppress Seasonality for Rail data
+Decompose_Rail.ts=decompose(travelRail.ts,"additive")
+Adjusted_Rail.ts <- travelRail.ts-Decompose_Rail.ts$seasonal  #With Adjusted seasonality
+plot(Adjusted_Rail.ts/1000000) 
+
+# Using  Decompose function to suppress Seasonality for Vehicle data
+Decompose_Car.ts=decompose(travelCar.ts,"additive")
+Adjusted_Car.ts <- travelCar.ts-Decompose_Car.ts$seasonal  #With Adjusted seasonality
+plot(Adjusted_Car.ts) 
+
+```
+
+```{r}
+#Adding trend or season
+library(forecast)
+AirMulti.lm <- tslm(Adjusted_Air_multiplicative.ts ~ trend)
+summary(AirMulti.lm)
+
+AirMulti.lm.season <- tslm(Adjusted_Air_multiplicative.ts ~ season)
+summary(AirMulti.lm.season)
+
+AirMulti.lm.seasonAndTrend <- tslm(Adjusted_Air_multiplicative.ts ~ trend+season)
+summary(AirMulti.lm.seasonAndTrend)
+plot(AirMulti.lm.seasonAndTrend$residuals)
+AirMulti.lm.seasonAndTrend$residuals
+#Create an ACF (autocorrelation) plot of the regression residuals
+Acf(AirMulti.lm.seasonAndTrend$residuals, lag.max = 12, main="")
+#partial autocorrelation
+Pacf(AirMulti.lm.seasonAndTrend$residuals, lag.max = 12, main="")
+```
+# Fit linear regression models to Air, Rail, and to Auto with additive seasonality and an appropriate trend. For Air and Rail, fit a linear trend. For Rail, use a quadratic trend. Remember to use only pre-event data. Once the models are estimated, use them to forecast each of the three post-event series.
+```{r}
+# adding linear trend for Air,rail and Car
+Decompose_Air_Additive.ts=decompose(travelAir.ts,"additive")
+Adjusted_Air_Additive.ts <- travelAir.ts-Decompose_Air_Additive.ts$seasonal  #With Adjusted seasonality
+Air.lm <- tslm(Adjusted_Air_Additive.ts ~ trend)
+
+
+Rail.lm <- tslm(Adjusted_Rail.ts ~ trend)
+
+
+Car.lm <- tslm(Adjusted_Car.ts ~ trend)
+
+
+
+# fitting Quadratic trend for Rail
+Rail.lm <- tslm(Adjusted_Rail.ts ~ trend + I(trend^2))
+summary(Rail.lm)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+```{r}
+#  generate the naive and seasonal naive forecasts
+Airnaive.pred <- forecast::naive(Adjusted_Air_Additive.ts, h = 36)
+Airsnaive.pred <- forecast::snaive(Adjusted_Air_Additive.ts, h = 36)
+
+
+Railnaive.pred <- forecast::naive(Adjusted_Rail.ts, h = 36)
+Railsnaive.pred <- forecast::snaive(Adjusted_Rail.ts, h = 36)
+
+
+Carnaive.pred <- forecast::naive(Adjusted_Car.ts, h = 36)
+Carsaive.pred <- forecast::snaive(Adjusted_Car.ts, h = 36)
+
+```
+```{r}
+# plot forecasts and actuals in the training and validation sets
+plot(travelAir.ts,  ylab = "Air Travel", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "") 
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Airnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Airsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(c(2004.70 - 3, 2004.70 - 3), c(0, 700999930)) 
+lines(c(2004.25, 2004.25), c(0, 700999930))
+text(1994.25, 69103630, "Training")
+text(2002.75, 69999990, "Validation")
+text(2004.90, 69103630, "Future")
+arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 30)
+
+
+plot(travelRail.ts,  ylab = "Rail Travel", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "") 
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Railnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Railsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(c(2004.70 - 3, 2004.70 - 3), c(0, 804013874)) 
+lines(c(2004.25, 2004.25), c(0, 804013874))
+text(1996, 664013874, "Training")
+text(2002.75, 664013874, "Validation")
+text(2004.90, 664013874, "Future")
+
+  plot(travelCar.ts,  ylab = "Car Travel", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "") 
+  axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+  lines(Carnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+  lines(Carnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+  lines(c(2004.70 - 3, 2004.70 - 3), c(0, 350)) 
+  lines(c(2004.25, 2004.25), c(0, 270))
+  text(1994.25, 240, "Training")
+  text(2002.75, 255, "Validation")
+  text(2004.90, 240, "Future")
+arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 30)
+
+```
+
