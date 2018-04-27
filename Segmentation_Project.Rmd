@@ -1,0 +1,157 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+forcluster <- c("cluster","NbClust","flexclust","fMultivar","ggplot2","lattice","gridbase","gridextra","plyr")
+install.packages(forcluster)
+```
+###Importing the BathSoap dataset
+```{r}
+# Removed % sign from data and converted to points
+Bath_Soap_Data=read.csv("C:\\Users\\shiva\\Documents\\Spring Sem\\BAD\\BathSoap.csv")
+summary(Bath_Soap_Data)
+View(Bath_Soap_Data)
+
+#Converting rowss with 0 value
+Bath_Soap_Data$SEX[Bath_Soap_Data$SEX=="0"]<-2
+Bath_Soap_Data$FEH[Bath_Soap_Data$FEH=="0"]<-1
+Bath_Soap_Data$MT[Bath_Soap_Data$MT=="0"]<-5
+Bath_Soap_Data$HS[Bath_Soap_Data$HS=="0"]<-5
+Bath_Soap_Data$EDU[Bath_Soap_Data$EDU=="0"]<-5
+Bath_Soap_Data$CS[Bath_Soap_Data$CS=="0"]<-1
+View(Bath_Soap_Data)
+
+```
+```{r}
+# Scalaing the data before clustering
+library(caret)
+
+ScaledSoapData=lapply(Bath_Soap_Data[,-c(1)],scale)
+
+ScaledSoapData=preProcess(Bath_Soap_Data[,-c(1)],method=c("center","scale"))
+ScaledSoapData1<-predict(ScaledSoapData,Bath_Soap_Data)
+row.names(ScaledSoapData1) <- ScaledSoapData1$Member.id # use Memberid for row names
+#Removing Member Id
+ScaledSoapData1$Member.id=NULL
+View(ScaledSoapData)
+#creating Max score column
+max(Bath_Soap_Data$Br..Cd..24)#1
+max(Bath_Soap_Data$Br..Cd..272)#0.96
+max(Bath_Soap_Data$Br..Cd..352)#0.99
+max(Bath_Soap_Data$Br..Cd..481)#0.9
+max(Bath_Soap_Data$Br..Cd..5)#0.97
+max(Bath_Soap_Data$Br..Cd..55)#1
+max(Bath_Soap_Data$Br..Cd..57..144)#1
+max(Bath_Soap_Data$Br..Cd..286)#1
+#creating new column called max score for all the brands
+ScaledSoapData1$max_num_score<-apply(ScaledSoapData1[, 22:30], 1, max)
+
+#Creating new column brand loyality index
+  ScaledSoapData1$BrandLoyaltyIndex<-0.4*ScaledSoapData1$No..of.Brands + 0.4*ScaledSoapData1$Brand.Runs + 0.2*ScaledSoapData1$max_num_score
+```
+
+
+```{r}
+##Clustering for purchase behaviour
+library(NbClust)
+set.seed(1234)
+devAskNewPage(ask=T)
+nc <- NbClust(ScaledSoapData1[,-c(22:46)],min.nc=2,max.nc=5,method="kmeans")
+```
+
+```{r}
+table(nc$Best.n[1,])
+barplot(table(nc$Best.n[1,]),
+        xlab="Number of Clusters", ylab="Number of criteria",
+        main = "Number of clusters chosen by 8 Criteria")
+set.seed(1234)
+# choosing 3 as the best cluster
+fit.km <- kmeans(ScaledSoapData1[,-c(22:46)],3,nstart=25)
+fit.km$size
+fit.km$cluster
+fit.km$centers
+# Distance between clusters
+dist(fit.km$centers)
+library(cluster)
+clusplot(ScaledSoapData1[,-c(22:46)], fit.km$cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=2, lines=0)
+```
+
+
+```{r}
+#Clustering based on basis of purchase
+library(NbClust)
+set.seed(1234)
+devAskNewPage(ask=T)
+nc1 <- NbClust(ScaledSoapData1[,c(31:45)],min.nc=2,max.nc=5,method="kmeans")
+
+```
+
+```{r}
+table(nc1$Best.n[1,])
+
+set.seed(1234)
+fit.km1 <- kmeans(ScaledSoapData1[,c(31:45)],2,nstart=25)
+fit.km1$size
+fit.km1$cluster
+#Distance between clusters
+dist(fit.km1$centers)
+clusplot(ScaledSoapData1[,c(31:45)], fit.km1$cluster, main='2D representation of the Cluster solution',color=TRUE, shade=TRUE,labels=2, lines=0)
+```
+
+```{r}
+#Clustering based on both behaviour and purchase
+library(NbClust)
+set.seed(1234)
+devAskNewPage(ask=T)
+nc2 <- NbClust(ScaledSoapData1[,-c(22:30,46)],min.nc=2,max.nc=5,method="kmeans")
+
+```
+
+```{r}
+table(nc2$Best.n[1,])
+
+
+set.seed(1234)
+fit.km2 <- kmeans(ScaledSoapData1[,-c(22:30,46)],3,nstart=25)
+fit.km2$size
+fit.km2$cluster
+fit.km2
+# Distance between clusters
+dist(fit.km2$centers)
+clusplot(ScaledSoapData1[,c(31:45)], fit.km2$cluster, main='2D representation of the Cluster solution',color=TRUE, shade=TRUE,labels=2, lines=0)
+```
+
+```{r}
+##Characterictics of different clusters
+VisualData <- cbind(Bath_Soap_Data, Cluster=fit.km2$cluster)#Creating col Cluster in original data
+View(VisualData)
+Cluster1=subset(VisualData,Cluster==1)# Filtering the cluster 1 data
+
+Cluster2=subset(VisualData,Cluster==2) #Filtering the cluster 1 data
+
+Cluster3=subset(VisualData,Cluster==3) # Filtering the cluster 1 data
+
+```
+
+
+```{r}
+###Model based clustering
+install.packages("FNN")
+Data2=ScaledSoapData1[,-c(22:30,46)]
+library(FNN)
+#Filtering out 50 rows as sample to test
+SampleData=Data2[1:50,]
+#Predicting the sample data on the best cluster
+pred.knn <- get.knnx(fit.km2$centers, SampleData, 1)$nn.index[,1]
+pred.knn
+
+```
+
